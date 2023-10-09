@@ -1,6 +1,11 @@
-import { mdiAccount } from "@mdi/js";
-import Icon from "@mdi/react";
-import type { MetaFunction } from "@remix-run/node";
+import {
+  redirect,
+  type ActionFunction,
+  type ActionFunctionArgs,
+  type MetaFunction,
+} from "@remix-run/node";
+import { Form } from "@remix-run/react";
+import { useEffect } from "react";
 
 export const meta: MetaFunction = () => {
   return [
@@ -9,20 +14,56 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+export const action: ActionFunction = async (args: ActionFunctionArgs) => {
+  const request = args.request;
+  const body = await request.formData();
+
+  console.log(body);
+
+  const token = body.get("cf-turnstile-response");
+  const ip = request.headers.get("CF-Connecting-IP");
+  console.log("token", token);
+  console.log("ip", ip);
+
+  let formData = new FormData();
+  formData.append("secret", "0x4AAAAAAALWzt5w_2MT99qhTxGI_DD9Bmw");
+  token && formData.append("response", token);
+  ip && formData.append("remoteip", ip);
+
+  const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+  const result = await fetch(url, {
+    body: formData,
+    method: "POST",
+  });
+
+  const outcome = await result.json();
+  console.log(outcome);
+  return redirect("/test");
+};
+
 export default function Index() {
+  useEffect(() => {
+    setTimeout(() => {
+      const script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+      script.async = true;
+      script.defer = true;
+
+      document.body.appendChild(script);
+    }, 2000);
+  }, []);
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
       <h1>Welcome to Remix</h1>
-      <Icon
-        path={mdiAccount}
-        title="User Profile"
-        size={1}
-        horizontal
-        vertical
-        rotate={90}
-        color="red"
-        spin
-      />
+      <Form method="post">
+        <div
+          className="cf-turnstile"
+          data-sitekey="0x4AAAAAAALWzgGWskzdV7VH"
+          data-theme="light"
+        ></div>
+        <button type="submit">submit</button>
+      </Form>
       <ul>
         <li>
           <a
